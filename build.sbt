@@ -1,26 +1,40 @@
-name := "crisp-jobserver-examples"
+import Dependencies._
+import Versions._
 
-version := "1.0.0"
 
-scalacOptions ++= Seq("-deprecation")
-
-lazy val buildSettings = Seq(
-  version := "0.1-SNAPSHOT",
-  organization := "com.github.crisp.sparking.jobserver",
-  scalaVersion := "2.9.2"
+lazy val commonSettings: Seq[Def.Setting[_]] = Defaults.coreDefaultSettings ++ Seq(
+  organization := "com.crisp",
+  version := "0.1.0-SNAPSHOT",
+  scalaVersion := "2.10.6",
+  resolvers ++= Dependencies.repos,
+  credentials += Credentials(Path.userHome / ".sbt" / ".credentials"),
+  dependencyOverrides += "org.scala-lang" % "scala-library" % scalaVersion.value,
+  parallelExecution in Test := false,
+  scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation", "-feature"),
+  // We need to exclude jms/jmxtools/etc because it causes undecipherable SBT errors  :(
+  ivyXML :=
+    <dependencies>
+    <exclude module="jms"/>
+    <exclude module="jmxtools"/>
+    <exclude module="jmxri"/>
+    </dependencies>
 )
 
-resolvers += "Ooyala Bintray" at "http://dl.bintray.com/ooyala/maven"
+lazy val rootSettings = Seq(
+  // Must run Spark tests sequentially because they compete for port 4040!
+  parallelExecution in Test := false,
 
-libraryDependencies ++= Seq (
-  "joda-time" % "joda-time" % "2.3",
-  "org.joda" % "joda-convert" % "1.2",
-  ("org.apache.spark" %% "spark-core" % "1.1.1").
-    exclude("org.mortbay.jetty", "servlet-api").
-    exclude("commons-beanutils", "commons-beanutils-core").
-    exclude("commons-collections", "commons-collections").
-    exclude("com.esotericsoftware.minlog", "minlog").
-    exclude("junit", "junit").
-    exclude("org.slf4j", "log4j12"),
-  "ooyala.cnd" % "job-server" % "0.4.0" % "provided"
+  // disable test for root project
+  test := {}
+)
+
+lazy val root = (project in file("."))
+  .settings(
+    commonSettings,
+    rootSettings,
+    name := "jobserver-example",
+    libraryDependencies ++= sparkDeps ++ typeSafeConfigDeps ++ sparkExtraDeps ++ coreTestDeps
+      ++ jobserverDeps,
+    test in assembly := {},
+    fork in Test := true
 )
